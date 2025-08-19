@@ -173,3 +173,42 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+# do this change
+
+def write_results(out_xl, hits):
+    from datetime import datetime
+    import pandas as pd
+
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%SZ")
+    columns = ["url","entity","section","priority","discovery","status",
+               "requires_login","format","language","last_seen","content_hash",
+               "owner","notes"]
+
+    rows = [{
+        "url": u, "entity": e, "section": "", "priority": "P1" if e in ("plan","device","promo") else "P2",
+        "discovery": "sitemap+crawl", "status": "todo", "requires_login": "",
+        "format": "", "language": "en", "last_seen": now, "content_hash": "",
+        "owner": "", "notes": ""
+    } for u, e in sorted(hits.items())]
+
+    df = pd.DataFrame(rows, columns=columns)
+
+    # Build a summary even if empty
+    if not df.empty:
+        summary = (df.groupby("entity")["url"].count()
+                     .rename("count").reset_index()
+                     .sort_values("count", ascending=False))
+    else:
+        summary = pd.DataFrame({"entity": [], "count": []})
+
+    with pd.ExcelWriter(out_xl, engine="xlsxwriter") as w:
+        df.to_excel(w, index=False, sheet_name="URL_Inventory")
+        summary.to_excel(w, index=False, sheet_name="Summary")
+
+    print(f"Wrote {len(df)} URLs to {out_xl}")
+    if df.empty:
+        print("No in-scope pages found. Re-check Include_Patterns and crawl depth.")
+
