@@ -9,9 +9,12 @@
 #
 import argparse, re, time, urllib.parse as up
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 from playwright.sync_api import sync_playwright
+import os
+
+chrome_profile = os.path.join(os.environ["LOCALAPPDATA"], "Google", "Chrome", "User Data")
 
 DEF_USER_AGENT = "Mozilla/5.0 (compatible; TFB-Discovery/1.0; +https://example.org)"
 
@@ -47,8 +50,13 @@ def discover_with_browser(base, seeds, allow, block, depth=2, throttle=0.5, user
 
     with sync_playwright() as p:
         # Persistent context stores your login/cookies between runs
-        browser = p.chromium.launch_persistent_context(user_data_dir=user_data_dir, headless=False)
-        page = browser.new_page(user_agent=DEF_USER_AGENT)
+       # browser = p.chromium.launch_persistent_context(user_data_dir=user_data_dir, headless=False)
+        browser = p.chromium.launch_persistent_context(user_data_dir=chrome_profile, headless=False,  channel="chrome",          # or "chrome" if you prefer
+            ignore_https_errors=True,     # avoid corp TLS errors during discovery
+            user_agent = DEF_USER_AGENT
+            )
+
+        page = browser.new_page()
         # visit a base page first to let you log in if needed
         page.goto(base, wait_until="domcontentloaded", timeout=60000)
 
@@ -101,7 +109,7 @@ def discover_with_browser(base, seeds, allow, block, depth=2, throttle=0.5, user
     return hits
 
 def write_results(out_xl, hits):
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%SZ")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
     columns = ["url","entity","section","priority","discovery","status","requires_login",
                "format","language","last_seen","content_hash","owner","notes"]
     rows = [{
