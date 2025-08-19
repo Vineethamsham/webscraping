@@ -33,4 +33,8 @@ python .\discovery_all.py --base "https://magentapulse.t-mobile.com" --workbook 
 
 
 
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+python .\discovery_cdp.py --base "https://magentapulse.t-mobile.com" --workbook ".\TFB_URL_Inventory_UPDATED.xlsx" --out ".\TFB_URL_Inventory_FULL.xlsx" --depth 3 --throttle 0.7
+
+
 
