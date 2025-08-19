@@ -11,6 +11,11 @@ python .\discovery_playwright.py --base "https://magentapulse.t-mobile.com" `
   --throttle 0.5
 
 
+# show any remaining 'user_agent' on new_page lines (should return nothing)
+Select-String -Path .\discovery_playwright.py -Pattern "new_page\(user_agent"
+
+
+
 
 python .\discovery_playwright.py --base "https://magentapulse.t-mobile.com" --workbook ".\TFB_URL_Inventory_UPDATED.xlsx" --out ".\TFB_URL_Inventory_FULL.xlsx" --depth 2 --throttle 0.5
 
