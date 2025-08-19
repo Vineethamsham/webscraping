@@ -147,3 +147,88 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+# Replace
+
+def discover_with_browser(base, seeds, allow, block, depth=2, throttle=0.5, user_data_dir=PRIVATE_PROFILE_DIR):
+    hits = {}
+    seen = set()
+    q = deque()
+
+    with sync_playwright() as p:
+        # Launch Chrome with a fresh, local profile (NOT the enterprise profile)
+        try:
+            browser = p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                headless=False,
+                channel="chrome",              # use Chrome (works for you)
+                ignore_https_errors=True,
+                user_agent=DEF_USER_AGENT
+            )
+        except Exception:
+            # Fallback: explicit path (adjust if your Chrome is elsewhere)
+            browser = p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                headless=False,
+                executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                ignore_https_errors=True,
+                user_agent=DEF_USER_AGENT
+            )
+
+        page = browser.new_page()
+
+        # Open base page to allow SSO; you log in once with this fresh profile.
+        page.goto(base, wait_until="domcontentloaded", timeout=90000)
+        print("\n*** Log in in the opened Chrome window (fresh profile) ***")
+        input("Press ENTER here after you are fully signed in and can browse … ")
+
+        # BFS crawl
+        for s in seeds:
+            if same_domain(base, s):
+                q.append((s, 0))
+
+        while q:
+            url, d = q.popleft()
+            if url in seen or d > depth:
+                continue
+            seen.add(url)
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=90000)
+                try:
+                    page.wait_for_load_state("networkidle", timeout=8000)
+                except:
+                    pass
+
+                # canonical
+                can_href = None
+                try:
+                    el = page.query_selector('link[rel="canonical"]')
+                    if el:
+                        can_href = el.get_attribute("href")
+                except:
+                    pass
+                can = canonical_url(page.url, can_href)
+
+                ok, ent = in_scope(can, allow, block)
+                if ok:
+                    hits[can] = ent
+
+                # enqueue children
+                hrefs = page.eval_on_selector_all("a[href]", "els => els.map(e => e.href)")
+                for href in hrefs:
+                    if not href:
+                        continue
+                    if "#" in href:
+                        href = href.split("#", 1)[0]
+                    if same_domain(base, href) and href not in seen:
+                        q.append((href, d + 1))
+
+                time.sleep(throttle)
+            except Exception:
+                continue
+
+        browser.close()
+    return hits
