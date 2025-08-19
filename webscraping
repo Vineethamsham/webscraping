@@ -15,3 +15,8 @@ python .\discovery_all.py --base "https://magentapulse.t-mobile.com" --workbook 
 python .\discovery_all.py --base "https://magentapulse.t-mobile.com" --workbook ".\TFB_URL_Inventory.xlsx" --out ".\TFB_URL_Inventory_FULL.xlsx" --depth 3 --throttle 1.0
 
 
+python .\discovery_all.py --base "https://magentapulse.t-mobile.com" --workbook ".\TFB_URL_Inventory_UPDATED.xlsx" --out ".\TFB_URL_Inventory_FULL.xlsx" --depth 3 --throttle 1.0
+
+
+
+
