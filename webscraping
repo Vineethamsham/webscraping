@@ -4,12 +4,12 @@ pip install -r requirements_playwright.txt
 python -m playwright install chromium
 
 
-browser = p.chromium.launch_persistent_context(
-    user_data_dir=user_data_dir,
-    headless=False,
-    channel="msedge",            # or "chrome" if you prefer
-    ignore_https_errors=True     # avoid corp TLS errors during discovery
-)
+python .\discovery_playwright.py --base "https://magentapulse.t-mobile.com" `
+  --workbook ".\TFB_URL_Inventory_UPDATED.xlsx" `
+  --out ".\TFB_URL_Inventory_FULL.xlsx" `
+  --depth 2 `
+  --throttle 0.5
+
 
 
 python .\discovery_playwright.py --base "https://magentapulse.t-mobile.com" --workbook ".\TFB_URL_Inventory_UPDATED.xlsx" --out ".\TFB_URL_Inventory_FULL.xlsx" --depth 2 --throttle 0.5
