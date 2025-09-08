@@ -1,0 +1,76 @@
+
+from bs4 import BeautifulSoup
+import json
+import os
+
+# ----------- Config ----------
+html_file = "page_output.html"
+page_id = os.path.splitext(os.path.basename(html_file))[0]  # e.g., 1314372368
+json_file = f"{page_id}.json"
+base_url = "https://magentapulse.t-mobile.com/page/"
+# -----------------------------
+
+# Load HTML
+with open(html_file, "r", encoding="utf-8") as f:
+    html_content = f.read()
+
+# Parse HTML
+soup = BeautifulSoup(html_content, "html.parser")
+
+# Initialize output
+structured_data = {
+    "page_id": page_id,
+    "url": base_url + page_id,
+    "title": "",
+    "sections": [],
+    "source": "html_api"
+}
+
+current_section = None
+
+# Loop through tags in order
+for tag in soup.find_all(["h1", "h2", "h3", "p", "ul", "ol", "table"]):
+
+    if tag.name in ["h1", "h2", "h3"]:
+        section_title = tag.get_text(strip=True)
+        if structured_data["title"] == "":
+            structured_data["title"] = section_title  # First h1 as title
+        current_section = {
+            "section_title": section_title,
+            "content": ""
+        }
+        structured_data["sections"].append(current_section)
+
+    elif tag.name == "p":
+        text = tag.get_text(strip=True)
+        if text and current_section:
+            current_section["content"] += "\n" + text
+
+    elif tag.name in ["ul", "ol"]:
+        items = [li.get_text(strip=True) for li in tag.find_all("li")]
+        if items and current_section:
+            current_section["content"] += "\n" + "\n".join(f"- {item}" for item in items)
+
+    elif tag.name == "table":
+        headers = []
+        rows = []
+
+        for row in tag.find_all("tr"):
+            cells = row.find_all(["th", "td"])
+            text_cells = [cell.get_text(strip=True) for cell in cells]
+            if row.find("th"):
+                headers = text_cells
+            else:
+                rows.append(text_cells)
+
+        if current_section:
+            current_section["table_data"] = {
+                "headers": headers,
+                "rows": rows
+            }
+
+# Save to JSON
+with open(json_file, "w", encoding="utf-8") as f:
+    json.dump(structured_data, f, indent=2)
+
+print(f"✅ Converted '{html_file}' → '{json_file}' with URL added")
