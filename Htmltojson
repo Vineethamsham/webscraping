@@ -1,13 +1,11 @@
-
 from bs4 import BeautifulSoup
 import json
 import os
 
 # ----------- Config ----------
-html_file = "page_output.html"
+html_file = "page_output.html"  # Set to the name of your HTML file
 page_id = os.path.splitext(os.path.basename(html_file))[0]  # e.g., 1314372368
 json_file = f"{page_id}.json"
-base_url = "https://magentapulse.t-mobile.com/page/"
 # -----------------------------
 
 # Load HTML
@@ -17,10 +15,24 @@ with open(html_file, "r", encoding="utf-8") as f:
 # Parse HTML
 soup = BeautifulSoup(html_content, "html.parser")
 
+# Extract actual page URL
+canonical_url = None
+link_tag = soup.find("link", rel="canonical")
+if link_tag and link_tag.get("href"):
+    canonical_url = link_tag["href"]
+
+if not canonical_url:
+    meta_tag = soup.find("meta", property="og:url")
+    if meta_tag and meta_tag.get("content"):
+        canonical_url = meta_tag["content"]
+
+if not canonical_url:
+    canonical_url = "UNKNOWN"
+
 # Initialize output
 structured_data = {
     "page_id": page_id,
-    "url": base_url + page_id,
+    "url": canonical_url,
     "title": "",
     "sections": [],
     "source": "html_api"
@@ -73,4 +85,4 @@ for tag in soup.find_all(["h1", "h2", "h3", "p", "ul", "ol", "table"]):
 with open(json_file, "w", encoding="utf-8") as f:
     json.dump(structured_data, f, indent=2)
 
-print(f"✅ Converted '{html_file}' → '{json_file}' with URL added")
+print(f"✅ Converted '{html_file}' → '{json_file}' with canonical URL: {canonical_url}")
