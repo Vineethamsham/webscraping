@@ -86,3 +86,4 @@ with open(json_file, "w", encoding="utf-8") as f:
     json.dump(structured_data, f, indent=2)
 
 print(f"✅ Converted '{html_file}' → '{json_file}' with canonical URL: {canonical_url}")
+
