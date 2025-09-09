@@ -2,88 +2,74 @@ from bs4 import BeautifulSoup
 import json
 import os
 
-# ----------- Config ----------
-html_file = "page_output.html"  # Set to the name of your HTML file
-page_id = os.path.splitext(os.path.basename(html_file))[0]  # e.g., 1314372368
+html_file = "34637595.html"  # Replace with your file
+page_id = os.path.splitext(os.path.basename(html_file))[0]
 json_file = f"{page_id}.json"
-# -----------------------------
 
 # Load HTML
 with open(html_file, "r", encoding="utf-8") as f:
-    html_content = f.read()
+    soup = BeautifulSoup(f.read(), "html.parser")
 
-# Parse HTML
-soup = BeautifulSoup(html_content, "html.parser")
+# Extract title
+title = soup.find("h1").get_text(strip=True) if soup.find("h1") else (soup.title.get_text(strip=True) if soup.title else "UNKNOWN")
 
-# Extract actual page URL
-canonical_url = None
+# Extract canonical URL
+canonical_url = "UNKNOWN"
 link_tag = soup.find("link", rel="canonical")
 if link_tag and link_tag.get("href"):
     canonical_url = link_tag["href"]
 
-if not canonical_url:
-    meta_tag = soup.find("meta", property="og:url")
-    if meta_tag and meta_tag.get("content"):
-        canonical_url = meta_tag["content"]
+# Extract table_data if 2-column table exists
+table_data = {}
+table = soup.find("table")
+if table:
+    for row in table.find_all("tr"):
+        cells = row.find_all("td")
+        if len(cells) == 2:
+            key = cells[0].get_text(strip=True)
+            value = cells[1].get_text(strip=True)
+            table_data[key] = value
 
-if not canonical_url:
-    canonical_url = "UNKNOWN"
-
-# Initialize output
-structured_data = {
-    "page_id": page_id,
-    "url": canonical_url,
-    "title": "",
-    "sections": [],
-    "source": "html_api"
-}
-
+# Extract sections
+sections = []
 current_section = None
 
-# Loop through tags in order
-for tag in soup.find_all(["h1", "h2", "h3", "p", "ul", "ol", "table"]):
-
-    if tag.name in ["h1", "h2", "h3"]:
-        section_title = tag.get_text(strip=True)
-        if structured_data["title"] == "":
-            structured_data["title"] = section_title  # First h1 as title
+for tag in soup.find_all(["h2", "h3", "p", "ul", "ol"]):
+    if tag.name in ["h2", "h3"]:
+        heading = tag.get_text(strip=True)
         current_section = {
-            "section_title": section_title,
-            "content": ""
+            "heading": heading,
+            "content": []
         }
-        structured_data["sections"].append(current_section)
-
+        sections.append(current_section)
     elif tag.name == "p":
         text = tag.get_text(strip=True)
         if text and current_section:
-            current_section["content"] += "\n" + text
-
+            current_section["content"].append(text)
     elif tag.name in ["ul", "ol"]:
         items = [li.get_text(strip=True) for li in tag.find_all("li")]
         if items and current_section:
-            current_section["content"] += "\n" + "\n".join(f"- {item}" for item in items)
+            current_section["content"].extend(items)
 
-    elif tag.name == "table":
-        headers = []
-        rows = []
+# Extract all <img src=...>
+image_urls = []
+for img in soup.find_all("img"):
+    src = img.get("src")
+    if src and src.startswith("http"):
+        image_urls.append(src)
 
-        for row in tag.find_all("tr"):
-            cells = row.find_all(["th", "td"])
-            text_cells = [cell.get_text(strip=True) for cell in cells]
-            if row.find("th"):
-                headers = text_cells
-            else:
-                rows.append(text_cells)
-
-        if current_section:
-            current_section["table_data"] = {
-                "headers": headers,
-                "rows": rows
-            }
+# Final output
+output_json = {
+    "title": title,
+    "url": canonical_url,
+    "sections": sections,
+    "images": image_urls
+}
+if table_data:
+    output_json["table_data"] = table_data
 
 # Save to JSON
 with open(json_file, "w", encoding="utf-8") as f:
-    json.dump(structured_data, f, indent=2)
+    json.dump(output_json, f, indent=2)
 
-print(f"✅ Converted '{html_file}' → '{json_file}' with canonical URL: {canonical_url}")
-
+print(f"✅ Saved to {json_file}")
